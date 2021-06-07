@@ -223,6 +223,7 @@ public class MainFrame {
 					ArrayList<Signature> verifiedSignatures = new ArrayList<Signature>();
 					//initialize a list of unverified signatures
 					ArrayList<Signature> unverifiedSignatures = new ArrayList<Signature>();
+					BigInteger private_key=null;
 					
 					//Loop all the signatures in the JSON data
 					for(int i=0;i<Signatures.size();i++) 
@@ -259,10 +260,35 @@ public class MainFrame {
 							 ConsoleArea.append(Signatures.get(i).getText() + " is not verified\nr :" + Signatures.get(i).getR() + "\ns :" + Signatures.get(i).getS()+ "\n\n");	
 						}
 						
+						// Cracking for the private key just like Sony PS3 Homebrew
+						for(int j=0;j<Signatures.size();j++)
+						{
+							if(Signatures.get(i).getR().equals(Signatures.get(j).getR()) && i!=j) //if two R values same
+							{
+								BigInteger sessionKey = Signatures.get(j).getR(); //Get Session key = same R value
+								BigInteger s1 = Signatures.get(i).getS(); //Get signature of first signed message
+								BigInteger s2 = Signatures.get(j).getS();//Get signature of second signed message
+								
+								BigInteger e1 = hashedMessage; //Get integer of hashed digest of first signed message
+								BigInteger e2 = encode(hash(Signatures.get(j).getText()));//Get integer of hashed digest of second signed message
+								
+								BigInteger numerator = (s1.multiply(e2)).subtract(s2.multiply(e1)) ; //S1E2 - S2E1
+								BigInteger denominator = sessionKey.multiply(s2.subtract(s1));// R(S2 - S1)
+								private_key = numerator.multiply(denominator.modInverse(cp.getN())).mod(cp.getN()); //((S1E2 - S2E1)*(R(S2 - S1))^-1)modulo N
+							}
+						}
 					}
 					
 					ConsoleArea.append("Number of Verified Signatures: "+ verifiedSignatures.size()+ " out of "+Signatures.size()+"\n");
 					ConsoleArea.append("Number of Unverified Signatures: "+ unverifiedSignatures.size()+ " out of "+Signatures.size()+"\n");
+					if (private_key!=null)
+					{
+						ConsoleArea.append("Private key: "+ private_key);
+					}
+					else
+					{
+						ConsoleArea.append("Private key is not found ");
+					}
 					
 				} catch (Exception e1) {
 					// TODO Auto-generated catch block
